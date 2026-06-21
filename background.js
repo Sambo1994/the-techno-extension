@@ -1,9 +1,19 @@
 // Background service worker for The Techno
 let offscreenDocument = null;
 let isPlaying = false;
+let offscreenReady = false;
 
+// Create offscreen document for background audio
 async function createOffscreenDocument() {
-  if (offscreenDocument) return;
+  if (offscreenDocument) {
+    // Check if it's still alive
+    try {
+      await chrome.runtime.sendMessage({ action: 'ping' });
+      return;
+    } catch (e) {
+      offscreenDocument = null;
+    }
+  }
   
   try {
     await chrome.offscreen.createDocument({
@@ -13,11 +23,15 @@ async function createOffscreenDocument() {
     });
     offscreenDocument = true;
     console.log('Offscreen document created');
+    
+    // Wait for it to be ready
+    await new Promise(resolve => setTimeout(resolve, 500));
   } catch (error) {
     console.error('Failed to create offscreen document:', error);
   }
 }
 
+// Close offscreen document
 async function closeOffscreenDocument() {
   if (!offscreenDocument) return;
   try {
@@ -29,16 +43,25 @@ async function closeOffscreenDocument() {
   }
 }
 
+// Listen for messages from popup
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === 'startAudio') {
-    createOffscreenDocument().then(() => {
-      chrome.runtime.sendMessage({
-        action: 'startTechno',
-        preset: message.preset || 'club',
-        volume: message.volume || 0.7,
-        bpm: message.bpm || 128,
-        subgenre: message.subgenre || 'deep'
-      });
+    createOffscreenDocument().then(async () => {
+      // Send multiple times to ensure it gets through
+      for (let i = 0; i < 3; i++) {
+        try {
+          await chrome.runtime.sendMessage({
+            action: 'startTechno',
+            preset: message.preset || 'club',
+            volume: message.volume || 0.7,
+            bpm: message.bpm || 128,
+            subgenre: message.subgenre || 'deep'
+          });
+          break;
+        } catch (e) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+      }
       isPlaying = true;
       sendResponse({ success: true });
     });
@@ -52,7 +75,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       if (!isPlaying) {
         closeOffscreenDocument();
       }
-    }, 2000);
+    }, 3000);
     sendResponse({ success: true });
     return true;
   }
@@ -90,5 +113,3 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 chrome.runtime.onInstalled.addListener(() => {
   console.log('The Techno installed');
 });
-
-chrome.action.onClicked.addListener(() => {});
