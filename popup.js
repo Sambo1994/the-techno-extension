@@ -26,7 +26,8 @@ const elements = {
   noteCount: document.getElementById('noteCount'),
   presetDisplay: document.getElementById('presetDisplay'),
   bpmDisplay: document.getElementById('bpmDisplay'),
-  kickIndicator: document.getElementById('kickIndicator')
+  kickIndicator: document.getElementById('kickIndicator'),
+  hihatIndicator: document.getElementById('hihatIndicator')
 };
 
 // Create stars
@@ -48,19 +49,35 @@ function createStars() {
 }
 createStars();
 
-// Audio functions
+// Audio functions - with glitch prevention
+let isStarting = false;
+
 async function startAudio() {
+  if (isStarting) {
+    console.log('Already starting audio, please wait...');
+    return;
+  }
+  
+  isStarting = true;
   try {
+    // First stop any existing audio
+    try {
+      await chrome.runtime.sendMessage({ action: 'stopAudio' });
+      await new Promise(resolve => setTimeout(resolve, 200));
+    } catch (e) {}
+    
+    // Then start fresh
     await chrome.runtime.sendMessage({
       action: 'startAudio',
       preset: state.preset,
       volume: state.volume,
       bpm: state.bpm
     });
-    console.log('Audio started');
+    console.log('✅ Audio started');
   } catch (error) {
     console.error('Failed to start audio:', error);
   }
+  isStarting = false;
 }
 
 async function stopAudio() {
@@ -119,6 +136,10 @@ function setupUI() {
       elements.bpmDisplay.textContent = state.bpm;
       updateBPM(state.bpm);
       updatePreset(preset);
+      // Restart with new preset
+      if (state.isPlaying) {
+        startAudio();
+      }
     });
   });
 }
@@ -160,6 +181,15 @@ function animateKick(beat) {
   });
 }
 
+// Hi-hat indicator animation
+function animateHiHat() {
+  const dots = elements.hihatIndicator.querySelectorAll('.hihat-dot');
+  dots.forEach((dot, index) => {
+    // Random activation for visual effect
+    dot.classList.toggle('active', Math.random() < 0.3);
+  });
+}
+
 // Listen for status updates
 chrome.runtime.onMessage.addListener((message) => {
   if (message.action === 'statusUpdate') {
@@ -174,8 +204,8 @@ chrome.runtime.onMessage.addListener((message) => {
   }
 });
 
-// Animate kick dots
-let kickAnimInterval = null;
+// Animate kick dots and hi-hats
+let kickBeat = 0;
 
 async function init() {
   setupUI();
@@ -183,11 +213,11 @@ async function init() {
   setInterval(updateTimeDisplay, 1000);
   
   // Animate kick dots
-  let kickBeat = 0;
-  kickAnimInterval = setInterval(() => {
+  setInterval(() => {
     if (state.isPlaying) {
       animateKick(kickBeat);
       kickBeat = (kickBeat + 1) % 8;
+      animateHiHat();
     }
   }, 250);
   
@@ -198,5 +228,11 @@ async function init() {
     }
   }, 2000);
 }
+
+// Handle popup close - clean up
+window.addEventListener('beforeunload', () => {
+  // Don't stop audio, let it continue in background
+  console.log('Popup closed, audio continues');
+});
 
 init();
