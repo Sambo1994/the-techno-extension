@@ -6,7 +6,7 @@ let isPlaying = false;
 let masterGain = null;
 let isInitialized = false;
 let currentBPM = 128;
-let musicGenerator = null;
+let musicGenerator = null;  // DECLARED ONCE
 let initAttempts = 0;
 let scheduledTime = 0;
 let beatCount = 0;
@@ -47,7 +47,7 @@ class TechnoEngine {
 
   async init() {
     if (this.isInitialized && this.audioContext && this.audioContext.state === 'running') {
-      return;
+      return true;
     }
     
     try {
@@ -97,7 +97,7 @@ class TechnoEngine {
       osc.start(time);
       osc.stop(time + 0.2);
     } catch (e) {
-      console.debug('Kick error:', e);
+      // Silent catch for performance
     }
   }
 
@@ -132,7 +132,7 @@ class TechnoEngine {
       noise.start(time);
       noise.stop(time + 0.05);
     } catch (e) {
-      console.debug('Hi-hat error:', e);
+      // Silent catch for performance
     }
   }
 
@@ -167,7 +167,7 @@ class TechnoEngine {
       noise.start(time);
       noise.stop(time + 0.06);
     } catch (e) {
-      console.debug('Clap error:', e);
+      // Silent catch for performance
     }
   }
 
@@ -198,7 +198,7 @@ class TechnoEngine {
       osc.start(time);
       osc.stop(time + 0.4);
     } catch (e) {
-      console.debug('Bass error:', e);
+      // Silent catch for performance
     }
   }
 
@@ -224,7 +224,7 @@ class TechnoEngine {
       osc.start(time);
       osc.stop(time + 1.2);
     } catch (e) {
-      console.debug('Synth error:', e);
+      // Silent catch for performance
     }
   }
 
@@ -311,7 +311,7 @@ class TechnoGenerator {
   }
 
   generateBeat(time) {
-    const beat = this.beatCount % 16; // 4 bars of 4 beats
+    const beat = this.beatCount % 16;
     const bpm = state.bpm || 128;
     const beatDuration = 60 / bpm;
     
@@ -322,7 +322,6 @@ class TechnoGenerator {
     if (beat % 2 === 1) {
       this.engine.createHiHat(time, 0.3 + Math.random() * 0.2);
     }
-    // Extra hi-hats for variety
     if (beat % 4 === 0 && Math.random() < 0.5) {
       this.engine.createHiHat(time + beatDuration * 0.25, 0.2 + Math.random() * 0.2);
     }
@@ -330,28 +329,26 @@ class TechnoGenerator {
       this.engine.createHiHat(time + beatDuration * 0.75, 0.2 + Math.random() * 0.2);
     }
     
-    // CLAP - on 2 and 4 (beats 1 and 3 in 0-indexed)
+    // CLAP - on 2 and 4
     if (beat === 1 || beat === 3) {
       this.engine.createClap(time, 0.5 + Math.random() * 0.2);
     }
-    // Extra claps
     if (beat === 7 || beat === 11) {
       this.engine.createClap(time, 0.3 + Math.random() * 0.2);
     }
     
-    // BASS - on every other beat with variation
+    // BASS
     const bassNotes = ['C2', 'G2', 'E2', 'A2'];
     if (beat % 2 === 0) {
       const note = bassNotes[Math.floor(Math.random() * bassNotes.length)];
       this.engine.createBass(note, time, 0.5 + Math.random() * 0.3);
     }
-    // Offbeat bass
     if (beat % 4 === 1 && Math.random() < 0.3) {
       const note = bassNotes[Math.floor(Math.random() * bassNotes.length)];
       this.engine.createBass(note, time + beatDuration * 0.5, 0.3 + Math.random() * 0.2);
     }
     
-    // SYNTH - occasional chords/melody
+    // SYNTH
     if (this.barCount % 2 === 0) {
       if (beat === 2 || beat === 6 || beat === 10 || beat === 14) {
         const synthNotes = ['C4', 'E4', 'G4', 'A4', 'B4'];
@@ -371,10 +368,8 @@ class TechnoGenerator {
       this.barCount++;
     }
     
-    // Update note count
     state.noteCount += 3 + Math.floor(Math.random() * 2);
     
-    // Update status periodically
     if (this.beatCount % 4 === 0) {
       this.updateStatus();
     }
@@ -395,9 +390,8 @@ class TechnoGenerator {
   }
 }
 
-// Initialize
+// Initialize - ONLY DECLARE ONCE
 let technoEngine = new TechnoEngine();
-let musicGenerator = null;
 
 // Message handler
 chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
@@ -434,6 +428,7 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
     technoEngine.setBPM(state.bpm);
     technoEngine.setSubgenre(state.subgenre);
     
+    // Create generator if it doesn't exist
     if (!musicGenerator) {
       musicGenerator = new TechnoGenerator(technoEngine);
     }
