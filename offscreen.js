@@ -1,4 +1,4 @@
-// Complete Techno Engine - Working 4/4 Kick
+// Complete Techno Engine - 4/4 Kick + Techno Hi-Hats
 console.log('Offscreen script loaded');
 
 let audioContext = null;
@@ -8,6 +8,7 @@ let masterGain = null;
 let timerId = null;
 let beatCount = 0;
 let isInitialized = false;
+let isAudioReady = false;
 
 // State
 let state = {
@@ -43,6 +44,7 @@ async function initAudio() {
     masterGain.connect(audioContext.destination);
     
     isInitialized = true;
+    isAudioReady = true;
     console.log('Audio initialized successfully!');
     console.log('Audio context state:', audioContext.state);
     
@@ -62,20 +64,20 @@ function testSound() {
     const gain = audioContext.createGain();
     osc.type = 'sine';
     osc.frequency.value = 440;
-    gain.gain.setValueAtTime(0.1, audioContext.currentTime);
+    gain.gain.setValueAtTime(0.05, audioContext.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.1);
     osc.connect(gain);
     gain.connect(masterGain);
     osc.start();
     osc.stop(audioContext.currentTime + 0.1);
-    console.log('Test beep played');
+    console.log('✅ Test beep played - audio working!');
   } catch (e) {
     console.log('Test sound failed:', e);
   }
 }
 
-// ==================== KICK DRUM - 4/4 PATTERN ====================
-function playKick(time) {
+// ==================== KICK DRUM - 4/4 ====================
+function playKick(time, velocity = 0.9) {
   if (!audioContext || !masterGain || isPaused) return;
   
   try {
@@ -87,7 +89,7 @@ function playKick(time) {
     osc.frequency.setValueAtTime(120, time);
     osc.frequency.exponentialRampToValueAtTime(35, time + 0.1);
     
-    gain.gain.setValueAtTime(0.6 * state.volume, time);
+    gain.gain.setValueAtTime(velocity * 0.6 * state.volume, time);
     gain.gain.exponentialRampToValueAtTime(0.001, time + 0.1);
     
     osc.connect(gain);
@@ -116,23 +118,22 @@ function playKick(time) {
     noiseGain.connect(masterGain);
     noise.start(time);
     noise.stop(time + 0.015);
-    
-    console.log('Kick at beat:', beatCount);
-  } catch (e) {
-    console.error('Kick error:', e);
-  }
+  } catch (e) {}
 }
 
-// ==================== HI-HAT ====================
-function playHiHat(time) {
+// ==================== TECHNO HI-HAT ====================
+function playHiHat(time, velocity = 0.6, type = 'closed') {
   if (!audioContext || !masterGain || isPaused) return;
   
   try {
-    const bufferSize = audioContext.sampleRate * 0.03;
+    const bufferSize = audioContext.sampleRate * 0.04;
     const buffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
     const data = buffer.getChannelData(0);
+    
+    // Different decay for open vs closed hi-hat
+    const decay = type === 'open' ? 0.15 : 0.04;
     for (let i = 0; i < bufferSize; i++) {
-      data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.05));
+      data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * decay));
     }
     
     const noise = audioContext.createBufferSource();
@@ -140,18 +141,22 @@ function playHiHat(time) {
     
     const gain = audioContext.createGain();
     const filter = audioContext.createBiquadFilter();
-    filter.type = 'highpass';
-    filter.frequency.value = 6000;
     
-    gain.gain.setValueAtTime(0.12 * state.volume, time);
-    gain.gain.exponentialRampToValueAtTime(0.001, time + 0.03);
+    // Techno hi-hats are bright and crisp
+    filter.type = 'bandpass';
+    filter.frequency.value = type === 'open' ? 4000 : 7000;
+    filter.Q.value = 1.2;
+    
+    const duration = type === 'open' ? 0.08 : 0.035;
+    gain.gain.setValueAtTime(velocity * 0.15 * state.volume, time);
+    gain.gain.exponentialRampToValueAtTime(0.001, time + duration);
     
     noise.connect(filter);
     filter.connect(gain);
     gain.connect(masterGain);
     
     noise.start(time);
-    noise.stop(time + 0.04);
+    noise.stop(time + duration + 0.01);
   } catch (e) {}
 }
 
@@ -193,7 +198,7 @@ function playBass(time) {
   if (!audioContext || !masterGain || isPaused) return;
   
   try {
-    const freq = 55 + Math.random() * 20;
+    const freq = 50 + Math.random() * 25;
     const osc = audioContext.createOscillator();
     const gain = audioContext.createGain();
     const filter = audioContext.createBiquadFilter();
@@ -202,7 +207,7 @@ function playBass(time) {
     osc.frequency.setValueAtTime(freq, time);
     
     filter.type = 'lowpass';
-    filter.frequency.value = 300;
+    filter.frequency.value = 250;
     filter.Q.value = 2;
     
     gain.gain.setValueAtTime(0.2 * state.volume, time);
@@ -217,7 +222,7 @@ function playBass(time) {
   } catch (e) {}
 }
 
-// ==================== GENERATE BEAT - 4/4 KICK ====================
+// ==================== GENERATE BEAT - 4/4 WITH TECHNO HI-HATS ====================
 function generateBeat() {
   // Check if we should stop
   if (isPaused || !isRunning) {
@@ -239,31 +244,38 @@ function generateBeat() {
   const bpm = state.bpm || 128;
   const beatDuration = 60 / bpm;
   const beat = beatCount % 16; // 16 beats = 4 bars
-  
-  console.log('Beat:', beat, 'Time:', now);
+  const bar = Math.floor(beatCount / 16);
   
   // ========== 4/4 KICK - ON EVERY BEAT ==========
-  // This is the essential techno pattern - kick on every quarter note
   playKick(now);
   
-  // ========== HI-HAT ==========
-  // Offbeat hi-hats (on the 8th notes)
+  // ========== TECHNO HI-HAT PATTERN ==========
+  // Standard techno: closed hi-hat on every 8th note (off-beat)
   if (beat % 2 === 1) {
-    playHiHat(now);
+    playHiHat(now, 0.5 + Math.random() * 0.2, 'closed');
   }
-  // Extra hi-hats for shuffle
-  if (Math.random() < 0.2 && beat % 2 === 0) {
-    playHiHat(now + beatDuration * 0.25);
+  
+  // Open hi-hat on the 4th beat of every bar for accent
+  if (beat % 4 === 3) {
+    playHiHat(now, 0.4 + Math.random() * 0.2, 'open');
   }
-  if (Math.random() < 0.2 && beat % 2 === 1) {
-    playHiHat(now + beatDuration * 0.75);
+  
+  // Extra closed hi-hats for driving rhythm
+  if (beat % 4 === 0 && Math.random() < 0.3) {
+    playHiHat(now + beatDuration * 0.5, 0.3 + Math.random() * 0.1, 'closed');
+  }
+  if (beat % 4 === 1 && Math.random() < 0.3) {
+    playHiHat(now + beatDuration * 0.25, 0.3 + Math.random() * 0.1, 'closed');
+  }
+  if (beat % 4 === 2 && Math.random() < 0.3) {
+    playHiHat(now + beatDuration * 0.75, 0.3 + Math.random() * 0.1, 'closed');
   }
   
   // ========== CLAP - ON 2 AND 4 ==========
   if (beat === 1 || beat === 3) {
     playClap(now);
   }
-  // Extra claps for variety
+  // Extra claps for warehouse feel
   if (beat === 5 || beat === 7 || beat === 9 || beat === 11) {
     if (Math.random() < 0.3) {
       playClap(now);
@@ -285,6 +297,13 @@ function generateBeat() {
   // Update status every 4 beats
   if (beatCount % 4 === 0) {
     updateStatus();
+    // Send kick update for visualizer
+    try {
+      chrome.runtime.sendMessage({
+        action: 'kickUpdate',
+        beat: beatCount % 8
+      }).catch(() => {});
+    } catch (e) {}
   }
   
   // ========== SCHEDULE NEXT BEAT ==========
@@ -311,6 +330,12 @@ function updateStatus() {
 async function startMusic() {
   console.log('Starting music...');
   
+  // Reset any existing state
+  if (timerId) {
+    clearTimeout(timerId);
+    timerId = null;
+  }
+  
   if (!audioContext) {
     const success = await initAudio();
     if (!success) {
@@ -329,7 +354,7 @@ async function startMusic() {
     return;
   }
   
-  console.log('Audio is ready, starting 4/4 techno beat...');
+  console.log('✅ Audio is ready, starting 4/4 techno beat...');
   isRunning = true;
   isPaused = false;
   beatCount = 0;
@@ -341,7 +366,7 @@ async function startMusic() {
 }
 
 function pauseMusic() {
-  console.log('Pausing music...');
+  console.log('⏸ Pausing music...');
   isPaused = true;
   if (timerId) {
     clearTimeout(timerId);
@@ -350,7 +375,7 @@ function pauseMusic() {
 }
 
 function resumeMusic() {
-  console.log('Resuming music...');
+  console.log('▶ Resuming music...');
   if (isPaused && isRunning) {
     isPaused = false;
     generateBeat();
@@ -358,7 +383,7 @@ function resumeMusic() {
 }
 
 function stopMusic() {
-  console.log('Stopping music...');
+  console.log('⏹ Stopping music...');
   isRunning = false;
   isPaused = false;
   if (timerId) {
@@ -395,7 +420,7 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
   }
   
   if (message.action === 'startTechno') {
-    console.log('Start techno requested');
+    console.log('▶ Start techno requested');
     
     if (message.volume !== undefined) {
       state.volume = message.volume;
@@ -407,25 +432,20 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
       state.preset = message.preset;
     }
     
-    if (isRunning && isPaused) {
-      resumeMusic();
-    } else {
-      await startMusic();
+    // If already running, restart fresh
+    if (isRunning) {
+      stopMusic();
+      await new Promise(resolve => setTimeout(resolve, 100));
     }
     
+    await startMusic();
     sendResponse({ success: true });
     return true;
   }
   
   if (message.action === 'stopTechno') {
-    console.log('Stop/Pause techno requested');
-    if (isRunning) {
-      if (isPaused) {
-        stopMusic();
-      } else {
-        pauseMusic();
-      }
-    }
+    console.log('⏹ Stop techno requested');
+    stopMusic();
     sendResponse({ success: true });
     return true;
   }
@@ -449,4 +469,4 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
   }
 });
 
-console.log('Techno engine ready with 4/4 kick pattern');
+console.log('✅ Techno engine ready with 4/4 kick + techno hi-hats');
