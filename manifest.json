@@ -2,9 +2,8 @@
   "manifest_version": 3,
   "name": "The Techno",
   "version": "1.0.0",
-  "description": "Infinite generative techno music for commercial spaces with galaxy visuals",
+  "description": "Infinite generative techno music for commercial spaces",
   "permissions": ["offscreen"],
-  "host_permissions": [],
   "action": {
     "default_popup": "popup.html",
     "default_icon": {
