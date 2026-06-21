@@ -1,12 +1,9 @@
 // Background service worker for The Techno
 let offscreenDocument = null;
 let isPlaying = false;
-let offscreenReady = false;
 
-// Create offscreen document for background audio
 async function createOffscreenDocument() {
   if (offscreenDocument) {
-    // Check if it's still alive
     try {
       await chrome.runtime.sendMessage({ action: 'ping' });
       return;
@@ -23,15 +20,12 @@ async function createOffscreenDocument() {
     });
     offscreenDocument = true;
     console.log('Offscreen document created');
-    
-    // Wait for it to be ready
-    await new Promise(resolve => setTimeout(resolve, 500));
+    await new Promise(resolve => setTimeout(resolve, 300));
   } catch (error) {
     console.error('Failed to create offscreen document:', error);
   }
 }
 
-// Close offscreen document
 async function closeOffscreenDocument() {
   if (!offscreenDocument) return;
   try {
@@ -43,27 +37,22 @@ async function closeOffscreenDocument() {
   }
 }
 
-// Listen for messages from popup
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === 'startAudio') {
     createOffscreenDocument().then(async () => {
-      // Send multiple times to ensure it gets through
-      for (let i = 0; i < 3; i++) {
-        try {
-          await chrome.runtime.sendMessage({
-            action: 'startTechno',
-            preset: message.preset || 'club',
-            volume: message.volume || 0.7,
-            bpm: message.bpm || 128,
-            subgenre: message.subgenre || 'deep'
-          });
-          break;
-        } catch (e) {
-          await new Promise(resolve => setTimeout(resolve, 100));
-        }
+      try {
+        await chrome.runtime.sendMessage({
+          action: 'startTechno',
+          preset: message.preset || 'club',
+          volume: message.volume || 0.7,
+          bpm: message.bpm || 128,
+          subgenre: message.subgenre || 'deep'
+        });
+        isPlaying = true;
+        sendResponse({ success: true });
+      } catch (e) {
+        sendResponse({ success: false, error: e.message });
       }
-      isPlaying = true;
-      sendResponse({ success: true });
     });
     return true;
   }
