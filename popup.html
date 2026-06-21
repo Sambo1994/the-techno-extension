@@ -13,8 +13,8 @@
         }
 
         body {
-            width: 400px;
-            min-height: 580px;
+            width: 380px;
+            min-height: 480px;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: #0a0e1a;
             color: #e8e0f0;
@@ -53,8 +53,7 @@
             height: 200%;
             background: 
                 radial-gradient(ellipse at 30% 50%, rgba(0, 200, 255, 0.08) 0%, transparent 50%),
-                radial-gradient(ellipse at 70% 80%, rgba(255, 0, 100, 0.06) 0%, transparent 50%),
-                radial-gradient(ellipse at 50% 20%, rgba(100, 0, 255, 0.05) 0%, transparent 40%);
+                radial-gradient(ellipse at 70% 80%, rgba(255, 0, 100, 0.06) 0%, transparent 50%);
             animation: nebulaFloat 60s ease-in-out infinite alternate;
             z-index: 0;
         }
@@ -124,10 +123,9 @@
         .techno-hero {
             position: relative;
             width: 100%;
-            height: 100px;
+            height: 80px;
             margin-bottom: 16px;
             border-radius: 14px;
-            overflow: hidden;
             background: radial-gradient(ellipse at center, rgba(0, 100, 200, 0.15), transparent 70%);
             display: flex;
             align-items: center;
@@ -135,8 +133,8 @@
         }
 
         .techno-silhouette {
-            font-size: 80px;
-            filter: drop-shadow(0 0 40px rgba(0, 200, 255, 0.2)) drop-shadow(0 10px 30px rgba(0,0,0,0.5));
+            font-size: 60px;
+            filter: drop-shadow(0 0 40px rgba(0, 200, 255, 0.2));
             opacity: 0.85;
             transition: all 0.4s;
             line-height: 1;
@@ -145,40 +143,6 @@
 
         .techno-silhouette:hover {
             transform: scale(1.04);
-            filter: drop-shadow(0 0 60px rgba(0, 200, 255, 0.3));
-        }
-
-        .hero-glow {
-            position: absolute;
-            bottom: -20px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 60%;
-            height: 40px;
-            background: radial-gradient(ellipse, rgba(0, 200, 255, 0.12), transparent 70%);
-            border-radius: 50%;
-            filter: blur(20px);
-        }
-
-        .visualizer {
-            display: flex;
-            justify-content: center;
-            gap: 2px;
-            height: 20px;
-            margin-bottom: 12px;
-        }
-
-        .vis-bar {
-            width: 4px;
-            background: linear-gradient(to top, #00d4ff, #7b2ffc);
-            border-radius: 2px;
-            transition: height 0.1s;
-            animation: visualize 0.4s ease-in-out infinite alternate;
-        }
-
-        @keyframes visualize {
-            0% { height: 4px; }
-            100% { height: 20px; }
         }
 
         .controls {
@@ -224,7 +188,6 @@
             background: linear-gradient(135deg, rgba(0, 200, 255, 0.3), rgba(123, 47, 252, 0.25));
             border-color: rgba(0, 200, 255, 0.3);
             transform: scale(1.02);
-            box-shadow: 0 0 30px rgba(0, 200, 255, 0.1);
         }
 
         .play-btn.active {
@@ -265,12 +228,6 @@
             cursor: pointer;
             border: none;
             box-shadow: 0 0 20px rgba(0, 200, 255, 0.2);
-            transition: all 0.2s;
-        }
-
-        input[type="range"]::-webkit-slider-thumb:hover {
-            transform: scale(1.1);
-            box-shadow: 0 0 30px rgba(0, 200, 255, 0.3);
         }
 
         .slider-value {
@@ -284,7 +241,7 @@
 
         .presets {
             display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
+            grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
             gap: 4px;
         }
 
@@ -292,9 +249,9 @@
             background: rgba(255, 255, 255, 0.03);
             border: 1px solid rgba(255, 255, 255, 0.06);
             color: rgba(255, 255, 255, 0.4);
-            padding: 4px 6px;
+            padding: 4px 4px;
             border-radius: 6px;
-            font-size: 8px;
+            font-size: 7px;
             font-weight: 300;
             letter-spacing: 0.5px;
             cursor: pointer;
@@ -305,46 +262,12 @@
 
         .preset-btn:hover {
             background: rgba(255, 255, 255, 0.06);
-            border-color: rgba(255, 255, 255, 0.1);
             color: rgba(255, 255, 255, 0.6);
         }
 
         .preset-btn.active {
             background: rgba(0, 200, 255, 0.08);
             border-color: rgba(0, 200, 255, 0.15);
-            color: #00d4ff;
-        }
-
-        .subgenres {
-            display: flex;
-            gap: 4px;
-            margin-top: 4px;
-        }
-
-        .subgenre-btn {
-            background: rgba(255, 255, 255, 0.02);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            color: rgba(255, 255, 255, 0.3);
-            padding: 3px 10px;
-            border-radius: 4px;
-            font-size: 8px;
-            font-weight: 300;
-            letter-spacing: 0.5px;
-            cursor: pointer;
-            transition: all 0.3s;
-            text-transform: uppercase;
-            font-family: inherit;
-            flex: 1;
-        }
-
-        .subgenre-btn:hover {
-            background: rgba(255, 255, 255, 0.05);
-            color: rgba(255, 255, 255, 0.5);
-        }
-
-        .subgenre-btn.active {
-            background: rgba(0, 200, 255, 0.06);
-            border-color: rgba(0, 200, 255, 0.1);
             color: #00d4ff;
         }
 
@@ -360,21 +283,6 @@
             letter-spacing: 0.5px;
         }
 
-        .status-bar .note-indicator {
-            display: flex;
-            gap: 6px;
-            align-items: center;
-        }
-
-        .bg-indicator {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            color: #00d4ff;
-            font-size: 8px;
-            opacity: 0.6;
-        }
-
         .bpm-display {
             color: #00d4ff;
             font-size: 10px;
@@ -384,15 +292,13 @@
             text-align: right;
         }
 
-        ::-webkit-scrollbar {
-            width: 3px;
-        }
-        ::-webkit-scrollbar-track {
-            background: transparent;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 10px;
+        .bg-indicator {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            color: #00d4ff;
+            font-size: 8px;
+            opacity: 0.6;
         }
     </style>
 </head>
@@ -405,33 +311,13 @@
         <div class="header">
             <div class="logo-area">
                 <span class="logo-icon">🔊</span>
-                <span class="title">The Techno <span>·</span></span>
+                <span class="title">The Techno</span>
             </div>
             <div class="status-badge" id="statusBadge">● LIVE</div>
         </div>
 
         <div class="techno-hero">
             <div class="techno-silhouette">🎛️</div>
-            <div class="hero-glow"></div>
-        </div>
-
-        <div class="visualizer" id="visualizer">
-            <div class="vis-bar" style="animation-delay: 0.0s"></div>
-            <div class="vis-bar" style="animation-delay: 0.1s"></div>
-            <div class="vis-bar" style="animation-delay: 0.2s"></div>
-            <div class="vis-bar" style="animation-delay: 0.3s"></div>
-            <div class="vis-bar" style="animation-delay: 0.4s"></div>
-            <div class="vis-bar" style="animation-delay: 0.5s"></div>
-            <div class="vis-bar" style="animation-delay: 0.6s"></div>
-            <div class="vis-bar" style="animation-delay: 0.7s"></div>
-            <div class="vis-bar" style="animation-delay: 0.8s"></div>
-            <div class="vis-bar" style="animation-delay: 0.9s"></div>
-            <div class="vis-bar" style="animation-delay: 1.0s"></div>
-            <div class="vis-bar" style="animation-delay: 1.1s"></div>
-            <div class="vis-bar" style="animation-delay: 1.2s"></div>
-            <div class="vis-bar" style="animation-delay: 1.3s"></div>
-            <div class="vis-bar" style="animation-delay: 1.4s"></div>
-            <div class="vis-bar" style="animation-delay: 1.5s"></div>
         </div>
 
         <div class="controls">
@@ -448,27 +334,17 @@
             </div>
 
             <div class="presets">
-                <button class="preset-btn active" data-preset="club">🏢 Club</button>
-                <button class="preset-btn" data-preset="warehouse">🏭 Warehouse</button>
-                <button class="preset-btn" data-preset="chillout">🌊 Chillout</button>
-                <button class="preset-btn" data-preset="progressive">📈 Progressive</button>
-                <button class="preset-btn" data-preset="techno">⚡ Hard</button>
-            </div>
-
-            <div class="subgenres">
-                <button class="subgenre-btn active" data-subgenre="deep">Deep</button>
-                <button class="subgenre-btn" data-subgenre="industrial">Industrial</button>
-                <button class="subgenre-btn" data-subgenre="melodic">Melodic</button>
-                <button class="subgenre-btn" data-subgenre="minimal">Minimal</button>
+                <button class="preset-btn active" data-preset="club">Club</button>
+                <button class="preset-btn" data-preset="warehouse">Ware</button>
+                <button class="preset-btn" data-preset="chillout">Chill</button>
+                <button class="preset-btn" data-preset="progressive">Prog</button>
+                <button class="preset-btn" data-preset="techno">Hard</button>
             </div>
         </div>
 
         <div class="status-bar">
             <span id="timeDisplay">00:00</span>
-            <div class="note-indicator">
-                <span id="noteDisplay">♩</span>
-                <span id="noteCount">0 notes</span>
-            </div>
+            <span id="noteCount">0 notes</span>
             <div class="bg-indicator">
                 <span>🔊</span> <span id="presetDisplay">Club</span>
             </div>
