@@ -1,4 +1,3 @@
-// Background service worker for The Techno
 let offscreenDocument = null;
 let isPlaying = false;
 
@@ -16,24 +15,13 @@ async function createOffscreenDocument() {
     await chrome.offscreen.createDocument({
       url: 'offscreen.html',
       reasons: ['AUDIO_PLAYBACK'],
-      justification: 'Play techno music in background'
+      justification: 'Play techno music'
     });
     offscreenDocument = true;
     console.log('Offscreen document created');
-    await new Promise(resolve => setTimeout(resolve, 300));
+    await new Promise(resolve => setTimeout(resolve, 500));
   } catch (error) {
     console.error('Failed to create offscreen document:', error);
-  }
-}
-
-async function closeOffscreenDocument() {
-  if (!offscreenDocument) return;
-  try {
-    await chrome.offscreen.closeDocument();
-    offscreenDocument = null;
-    console.log('Offscreen document closed');
-  } catch (error) {
-    console.error('Failed to close offscreen document:', error);
   }
 }
 
@@ -45,13 +33,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           action: 'startTechno',
           preset: message.preset || 'club',
           volume: message.volume || 0.7,
-          bpm: message.bpm || 128,
-          subgenre: message.subgenre || 'deep'
+          bpm: message.bpm || 128
         });
         isPlaying = true;
         sendResponse({ success: true });
       } catch (e) {
-        sendResponse({ success: false, error: e.message });
+        sendResponse({ success: false });
       }
     });
     return true;
@@ -60,11 +47,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === 'stopAudio') {
     chrome.runtime.sendMessage({ action: 'stopTechno' });
     isPlaying = false;
-    setTimeout(() => {
-      if (!isPlaying) {
-        closeOffscreenDocument();
-      }
-    }, 3000);
     sendResponse({ success: true });
     return true;
   }
@@ -77,12 +59,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   
   if (message.action === 'updateBPM') {
     chrome.runtime.sendMessage({ action: 'updateBPM', bpm: message.bpm });
-    sendResponse({ success: true });
-    return true;
-  }
-  
-  if (message.action === 'updateSubgenre') {
-    chrome.runtime.sendMessage({ action: 'updateSubgenre', subgenre: message.subgenre });
     sendResponse({ success: true });
     return true;
   }
