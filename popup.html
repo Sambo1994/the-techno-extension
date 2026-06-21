@@ -294,6 +294,27 @@
             font-size: 7px;
             opacity: 0.6;
         }
+
+        .hihat-indicator {
+            display: flex;
+            justify-content: center;
+            gap: 4px;
+            margin-bottom: 8px;
+            padding: 2px;
+        }
+
+        .hihat-dot {
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.05);
+            transition: all 0.1s;
+        }
+
+        .hihat-dot.active {
+            background: #ff6b6b;
+            box-shadow: 0 0 10px rgba(255, 107, 107, 0.3);
+        }
     </style>
 </head>
 <body>
@@ -323,6 +344,25 @@
             <div class="kick-dot" data-beat="5"></div>
             <div class="kick-dot" data-beat="6"></div>
             <div class="kick-dot" data-beat="7"></div>
+        </div>
+
+        <div class="hihat-indicator" id="hihatIndicator">
+            <div class="hihat-dot"></div>
+            <div class="hihat-dot"></div>
+            <div class="hihat-dot"></div>
+            <div class="hihat-dot"></div>
+            <div class="hihat-dot"></div>
+            <div class="hihat-dot"></div>
+            <div class="hihat-dot"></div>
+            <div class="hihat-dot"></div>
+            <div class="hihat-dot"></div>
+            <div class="hihat-dot"></div>
+            <div class="hihat-dot"></div>
+            <div class="hihat-dot"></div>
+            <div class="hihat-dot"></div>
+            <div class="hihat-dot"></div>
+            <div class="hihat-dot"></div>
+            <div class="hihat-dot"></div>
         </div>
 
         <div class="controls">
