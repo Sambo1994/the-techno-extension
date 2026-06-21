@@ -1,26 +1,31 @@
-// Complete Techno Engine - True 4x4 Beat with Proper Pause
+// Complete Techno Engine - Working 4/4 Kick
 console.log('Offscreen script loaded');
 
 let audioContext = null;
 let isRunning = false;
+let isPaused = false;
 let masterGain = null;
 let timerId = null;
-let currentBPM = 128;
 let beatCount = 0;
-let isPaused = false;  // <-- NEW: Separate pause state
+let isInitialized = false;
 
 // State
 let state = {
-  volume: 0.5,
+  volume: 0.7,
   bpm: 128,
   preset: 'club',
   noteCount: 0,
   startTime: Date.now()
 };
 
-// ... (Presets, NOTES, BASS_SCALES, DRONE_SCALES remain the same as before) ...
-// For brevity, I'm keeping the existing preset and scale definitions here.
-// Please copy them from your previous offscreen.js file.
+// Preset configurations
+const PRESETS = {
+  club: { bpm: 128, description: 'Club' },
+  warehouse: { bpm: 135, description: 'Warehouse' },
+  chillout: { bpm: 115, description: 'Chillout' },
+  progressive: { bpm: 125, description: 'Progressive' },
+  techno: { bpm: 140, description: 'Hard' }
+};
 
 // ==================== INITIALIZATION ====================
 async function initAudio() {
@@ -34,12 +39,15 @@ async function initAudio() {
     }
     
     masterGain = audioContext.createGain();
-    masterGain.gain.value = state.volume * 0.3;
+    masterGain.gain.value = state.volume * 0.4;
     masterGain.connect(audioContext.destination);
     
     isInitialized = true;
     console.log('Audio initialized successfully!');
     console.log('Audio context state:', audioContext.state);
+    
+    // Test sound to verify audio works
+    testSound();
     return true;
   } catch (error) {
     console.error('Failed to initialize audio:', error);
@@ -47,39 +55,172 @@ async function initAudio() {
   }
 }
 
-// ==================== INSTRUMENTS ====================
-// (Keep your existing playKick, playHiHat, playClap, playBass, playDrone functions here)
-// Ensure they all check for 'isPaused' and return if true.
+function testSound() {
+  try {
+    if (!audioContext || !masterGain) return;
+    const osc = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = 440;
+    gain.gain.setValueAtTime(0.1, audioContext.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.1);
+    osc.connect(gain);
+    gain.connect(masterGain);
+    osc.start();
+    osc.stop(audioContext.currentTime + 0.1);
+    console.log('Test beep played');
+  } catch (e) {
+    console.log('Test sound failed:', e);
+  }
+}
 
-function playKick(time, velocity = 0.9) { // <-- Increased default velocity
-  if (!audioContext || !masterGain || isPaused) return; // <-- Check pause state
+// ==================== KICK DRUM - 4/4 PATTERN ====================
+function playKick(time) {
+  if (!audioContext || !masterGain || isPaused) return;
   
   try {
+    // Main kick body
     const osc = audioContext.createOscillator();
     const gain = audioContext.createGain();
     
     osc.type = 'sine';
-    osc.frequency.setValueAtTime(150, time);
-    osc.frequency.exponentialRampToValueAtTime(30, time + 0.1);
+    osc.frequency.setValueAtTime(120, time);
+    osc.frequency.exponentialRampToValueAtTime(35, time + 0.1);
     
-    gain.gain.setValueAtTime(velocity * 0.6 * state.volume, time); // <-- Louder
+    gain.gain.setValueAtTime(0.6 * state.volume, time);
     gain.gain.exponentialRampToValueAtTime(0.001, time + 0.1);
     
     osc.connect(gain);
     gain.connect(masterGain);
     
     osc.start(time);
-    osc.stop(time + 0.15);
+    osc.stop(time + 0.12);
+    
+    // Click attack for punch
+    const bufferSize = audioContext.sampleRate * 0.005;
+    const buffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.1));
+    }
+    const noise = audioContext.createBufferSource();
+    noise.buffer = buffer;
+    const noiseGain = audioContext.createGain();
+    const noiseFilter = audioContext.createBiquadFilter();
+    noiseFilter.type = 'highpass';
+    noiseFilter.frequency.value = 3000;
+    noiseGain.gain.setValueAtTime(0.15 * state.volume, time);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, time + 0.01);
+    noise.connect(noiseFilter);
+    noiseFilter.connect(noiseGain);
+    noiseGain.connect(masterGain);
+    noise.start(time);
+    noise.stop(time + 0.015);
+    
+    console.log('Kick at beat:', beatCount);
+  } catch (e) {
+    console.error('Kick error:', e);
+  }
+}
+
+// ==================== HI-HAT ====================
+function playHiHat(time) {
+  if (!audioContext || !masterGain || isPaused) return;
+  
+  try {
+    const bufferSize = audioContext.sampleRate * 0.03;
+    const buffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.05));
+    }
+    
+    const noise = audioContext.createBufferSource();
+    noise.buffer = buffer;
+    
+    const gain = audioContext.createGain();
+    const filter = audioContext.createBiquadFilter();
+    filter.type = 'highpass';
+    filter.frequency.value = 6000;
+    
+    gain.gain.setValueAtTime(0.12 * state.volume, time);
+    gain.gain.exponentialRampToValueAtTime(0.001, time + 0.03);
+    
+    noise.connect(filter);
+    filter.connect(gain);
+    gain.connect(masterGain);
+    
+    noise.start(time);
+    noise.stop(time + 0.04);
   } catch (e) {}
 }
 
-// ... (Add similar isPaused checks to playHiHat, playClap, etc.) ...
+// ==================== CLAP ====================
+function playClap(time) {
+  if (!audioContext || !masterGain || isPaused) return;
+  
+  try {
+    const bufferSize = audioContext.sampleRate * 0.04;
+    const buffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.15));
+    }
+    
+    const noise = audioContext.createBufferSource();
+    noise.buffer = buffer;
+    
+    const gain = audioContext.createGain();
+    const filter = audioContext.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.value = 2000;
+    filter.Q.value = 1;
+    
+    gain.gain.setValueAtTime(0.2 * state.volume, time);
+    gain.gain.exponentialRampToValueAtTime(0.001, time + 0.04);
+    
+    noise.connect(filter);
+    filter.connect(gain);
+    gain.connect(masterGain);
+    
+    noise.start(time);
+    noise.stop(time + 0.05);
+  } catch (e) {}
+}
 
-// ==================== TRUE TECHNO BEAT ====================
+// ==================== BASS ====================
+function playBass(time) {
+  if (!audioContext || !masterGain || isPaused) return;
+  
+  try {
+    const freq = 55 + Math.random() * 20;
+    const osc = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+    const filter = audioContext.createBiquadFilter();
+    
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(freq, time);
+    
+    filter.type = 'lowpass';
+    filter.frequency.value = 300;
+    filter.Q.value = 2;
+    
+    gain.gain.setValueAtTime(0.2 * state.volume, time);
+    gain.gain.exponentialRampToValueAtTime(0.001, time + 0.25);
+    
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(masterGain);
+    
+    osc.start(time);
+    osc.stop(time + 0.3);
+  } catch (e) {}
+}
+
+// ==================== GENERATE BEAT - 4/4 KICK ====================
 function generateBeat() {
-  // --- CRITICAL: Stop if paused or not running ---
+  // Check if we should stop
   if (isPaused || !isRunning) {
-    // If paused, keep checking until resumed or stopped
     if (isPaused) {
       timerId = setTimeout(generateBeat, 50);
     }
@@ -98,88 +239,75 @@ function generateBeat() {
   const bpm = state.bpm || 128;
   const beatDuration = 60 / bpm;
   const beat = beatCount % 16; // 16 beats = 4 bars
-  const bar = Math.floor(beatCount / 16);
-  const preset = PRESETS[state.preset] || PRESETS.club;
-  const density = preset.density || 0.7;
-
-  // --- THE CORE 4x4 KICK ---
-  // Kick on EVERY beat (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15)
-  // This is the essential techno pattern.
-  if (true) { // Always play the kick
-    playKick(now, 0.8 + Math.random() * 0.15);
+  
+  console.log('Beat:', beat, 'Time:', now);
+  
+  // ========== 4/4 KICK - ON EVERY BEAT ==========
+  // This is the essential techno pattern - kick on every quarter note
+  playKick(now);
+  
+  // ========== HI-HAT ==========
+  // Offbeat hi-hats (on the 8th notes)
+  if (beat % 2 === 1) {
+    playHiHat(now);
   }
-
-  // --- HI-HAT (Off-beat and variations) ---
-  // Standard off-beat: on every 8th note (positions 1, 3, 5, 7, 9, 11, 13, 15)
-  if (beat % 2 === 1 && Math.random() < density) {
-    playHiHat(now, 0.3 + Math.random() * 0.2);
-  }
-  // Add some shuffle or extra hats
+  // Extra hi-hats for shuffle
   if (Math.random() < 0.2 && beat % 2 === 0) {
-    playHiHat(now + beatDuration * 0.25, 0.15 + Math.random() * 0.1);
+    playHiHat(now + beatDuration * 0.25);
   }
   if (Math.random() < 0.2 && beat % 2 === 1) {
-    playHiHat(now + beatDuration * 0.75, 0.15 + Math.random() * 0.1);
+    playHiHat(now + beatDuration * 0.75);
   }
-
-  // --- CLAP/Snare (On 2 and 4) ---
-  if (beat === 1 || beat === 3) { // Beats 2 and 4 (0-indexed)
-    playClap(now, 0.5 + Math.random() * 0.2);
+  
+  // ========== CLAP - ON 2 AND 4 ==========
+  if (beat === 1 || beat === 3) {
+    playClap(now);
   }
-  // Extra claps for warehouse feel
+  // Extra claps for variety
   if (beat === 5 || beat === 7 || beat === 9 || beat === 11) {
-    if (Math.random() < 0.2) {
-      playClap(now, 0.2 + Math.random() * 0.15);
+    if (Math.random() < 0.3) {
+      playClap(now);
     }
   }
-
-  // --- BASS (Syncopated) ---
-  // Play bass on the 1st and 3rd beat of every bar (positions 0, 2, 4, 6, etc.)
-  const bassPattern = preset.bassPattern || 'sub';
-  if (beat % 2 === 0 && Math.random() < 0.75) { // High probability
-    playBass(now, 0.5 + Math.random() * 0.3, bassPattern);
+  
+  // ========== BASS - ON EVERY OTHER BEAT ==========
+  if (beat % 2 === 0) {
+    playBass(now);
   }
-  // Add a syncopated bass hit (off-beat)
-  if (beat % 4 === 1 && Math.random() < 0.25) {
-    playBass(now + beatDuration * 0.5, 0.3 + Math.random() * 0.2, bassPattern);
+  // Offbeat bass
+  if (beat % 4 === 1 && Math.random() < 0.3) {
+    playBass(now + beatDuration * 0.5);
   }
-
-  // --- DRONE (Atmospheric Texture) ---
-  const droneType = preset.droneType || 'pad';
-  // Trigger drone on the 1st beat of every bar (positions 0, 4, 8, 12)
-  if (beat % 4 === 0) {
-    if (Math.random() < 0.6) { // 60% chance per bar
-      const duration = 2 + Math.random() * 2;
-      const velocity = 0.25 + Math.random() * 0.25;
-      playDrone(now + 0.1, duration, velocity, droneType);
-    }
-  }
-  // Occasional drone on the 3rd beat for variation
-  if (beat % 4 === 2 && Math.random() < 0.25) {
-    const duration = 1.5 + Math.random() * 1.5;
-    playDrone(now + 0.1, duration, 0.15 + Math.random() * 0.15, droneType);
-  }
-
-  // --- SYNTH STAB (Occasional Accent) ---
-  // Accent on the 2nd and 4th beat of the bar
-  if ((beat === 1 || beat === 3) && Math.random() < 0.3) {
-    playSynthStab(now, 0.2 + Math.random() * 0.15);
-  }
-
+  
   beatCount++;
-  state.noteCount += 2 + Math.floor(Math.random() * 3);
-
+  state.noteCount += 2 + Math.floor(Math.random() * 2);
+  
   // Update status every 4 beats
   if (beatCount % 4 === 0) {
     updateStatus();
   }
-
-  // --- SCHEDULE NEXT BEAT ---
+  
+  // ========== SCHEDULE NEXT BEAT ==========
   const nextTime = beatDuration * 1000;
   timerId = setTimeout(generateBeat, nextTime - 5);
 }
 
-// ==================== PLAY/PAUSE CONTROLS ====================
+// ==================== STATUS UPDATE ====================
+function updateStatus() {
+  const elapsed = (Date.now() - state.startTime) / 1000;
+  const minutes = Math.floor(elapsed / 60);
+  const seconds = Math.floor(elapsed % 60);
+  
+  try {
+    chrome.runtime.sendMessage({
+      action: 'statusUpdate',
+      time: `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`,
+      notes: state.noteCount
+    }).catch(() => {});
+  } catch (e) {}
+}
+
+// ==================== START / STOP / PAUSE ====================
 async function startMusic() {
   console.log('Starting music...');
   
@@ -193,6 +321,7 @@ async function startMusic() {
   
   if (audioContext.state === 'suspended') {
     await audioContext.resume();
+    console.log('Audio context resumed');
   }
   
   if (audioContext.state !== 'running') {
@@ -200,9 +329,9 @@ async function startMusic() {
     return;
   }
   
-  console.log('Audio is ready, starting beats...');
+  console.log('Audio is ready, starting 4/4 techno beat...');
   isRunning = true;
-  isPaused = false; // <-- Ensure not paused
+  isPaused = false;
   beatCount = 0;
   state.startTime = Date.now();
   state.noteCount = 0;
@@ -213,7 +342,7 @@ async function startMusic() {
 
 function pauseMusic() {
   console.log('Pausing music...');
-  isPaused = true; // <-- This stops the beat generation loop
+  isPaused = true;
   if (timerId) {
     clearTimeout(timerId);
     timerId = null;
@@ -224,7 +353,6 @@ function resumeMusic() {
   console.log('Resuming music...');
   if (isPaused && isRunning) {
     isPaused = false;
-    // Resume the beat loop
     generateBeat();
   }
 }
@@ -237,7 +365,24 @@ function stopMusic() {
     clearTimeout(timerId);
     timerId = null;
   }
-  // Clean up any hanging oscillators (keep your existing cleanup)
+}
+
+// ==================== UPDATE FUNCTIONS ====================
+function updateVolume(volume) {
+  state.volume = volume;
+  if (masterGain) {
+    masterGain.gain.value = volume * 0.4;
+  }
+}
+
+function updateBPM(bpm) {
+  state.bpm = bpm;
+  console.log('BPM updated to:', bpm);
+}
+
+function updatePreset(preset) {
+  state.preset = preset;
+  console.log('Preset updated to:', preset);
 }
 
 // ==================== MESSAGE HANDLER ====================
@@ -262,7 +407,6 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
       state.preset = message.preset;
     }
     
-    // If already running, just resume
     if (isRunning && isPaused) {
       resumeMusic();
     } else {
@@ -277,10 +421,8 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
     console.log('Stop/Pause techno requested');
     if (isRunning) {
       if (isPaused) {
-        // If already paused, fully stop
         stopMusic();
       } else {
-        // Otherwise, just pause
         pauseMusic();
       }
     }
@@ -288,7 +430,23 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
     return true;
   }
   
-  // ... (Keep other update handlers: updateVolume, updateBPM, updatePreset) ...
+  if (message.action === 'updateVolume') {
+    updateVolume(message.volume);
+    sendResponse({ success: true });
+    return true;
+  }
+  
+  if (message.action === 'updateBPM') {
+    updateBPM(message.bpm);
+    sendResponse({ success: true });
+    return true;
+  }
+  
+  if (message.action === 'updatePreset') {
+    updatePreset(message.preset);
+    sendResponse({ success: true });
+    return true;
+  }
 });
 
-console.log('Techno engine ready with true 4x4 beat and proper pause');
+console.log('Techno engine ready with 4/4 kick pattern');
