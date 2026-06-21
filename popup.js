@@ -55,13 +55,12 @@ createStars();
 // Visualizer animation
 function animateVisualizer() {
   const bars = elements.visualizer.querySelectorAll('.vis-bar');
-  bars.forEach((bar, index) => {
+  bars.forEach((bar) => {
     const height = 4 + Math.random() * 30;
     bar.style.height = height + 'px';
-    bar.style.animationDelay = (index * 0.1) + 's';
   });
 }
-setInterval(animateVisualizer, 100);
+setInterval(animateVisualizer, 150);
 
 // Start audio in background
 async function startBackgroundAudio() {
@@ -124,10 +123,8 @@ async function updatePreset(preset) {
 
 // UI Event Handlers
 function setupUI() {
-  // Play button
   elements.playBtn.addEventListener('click', togglePlay);
 
-  // Volume slider
   elements.volumeSlider.addEventListener('input', (e) => {
     const val = parseInt(e.target.value);
     elements.volumeValue.textContent = val + '%';
@@ -135,7 +132,6 @@ function setupUI() {
     updateVolume(state.volume);
   });
 
-  // Preset buttons
   elements.presetBtns.forEach(btn => {
     btn.addEventListener('click', () => {
       elements.presetBtns.forEach(b => b.classList.remove('active'));
@@ -145,30 +141,25 @@ function setupUI() {
       const config = PRESETS[preset];
       elements.presetDisplay.textContent = config.description;
       
-      // Update BPM
       state.bpm = config.bpm;
       elements.bpmDisplay.textContent = state.bpm;
       updateBPM(state.bpm);
       
-      // Update subgenre
       state.subgenre = config.subgenre;
       elements.subgenreBtns.forEach(b => {
         b.classList.toggle('active', b.dataset.subgenre === config.subgenre);
       });
       updateSubgenre(state.subgenre);
-      
       updatePreset(preset);
     });
   });
 
-  // Subgenre buttons
   elements.subgenreBtns.forEach(btn => {
     btn.addEventListener('click', () => {
       elements.subgenreBtns.forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
-      const subgenre = btn.dataset.subgenre;
-      state.subgenre = subgenre;
-      updateSubgenre(subgenre);
+      state.subgenre = btn.dataset.subgenre;
+      updateSubgenre(state.subgenre);
     });
   });
 }
