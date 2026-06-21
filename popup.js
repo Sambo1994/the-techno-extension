@@ -25,7 +25,8 @@ const elements = {
   timeDisplay: document.getElementById('timeDisplay'),
   noteCount: document.getElementById('noteCount'),
   presetDisplay: document.getElementById('presetDisplay'),
-  bpmDisplay: document.getElementById('bpmDisplay')
+  bpmDisplay: document.getElementById('bpmDisplay'),
+  kickIndicator: document.getElementById('kickIndicator')
 };
 
 // Create stars
@@ -151,6 +152,14 @@ function updateTimeDisplay() {
     `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
+// Kick indicator animation
+function animateKick(beat) {
+  const dots = elements.kickIndicator.querySelectorAll('.kick-dot');
+  dots.forEach((dot, index) => {
+    dot.classList.toggle('active', index === beat % 8);
+  });
+}
+
 // Listen for status updates
 chrome.runtime.onMessage.addListener((message) => {
   if (message.action === 'statusUpdate') {
@@ -160,12 +169,28 @@ chrome.runtime.onMessage.addListener((message) => {
       elements.noteCount.textContent = `${state.noteCount} notes`;
     }
   }
+  if (message.action === 'kickUpdate') {
+    animateKick(message.beat);
+  }
 });
+
+// Animate kick dots
+let kickAnimInterval = null;
 
 async function init() {
   setupUI();
   await startAudio();
   setInterval(updateTimeDisplay, 1000);
+  
+  // Animate kick dots
+  let kickBeat = 0;
+  kickAnimInterval = setInterval(() => {
+    if (state.isPlaying) {
+      animateKick(kickBeat);
+      kickBeat = (kickBeat + 1) % 8;
+    }
+  }, 250);
+  
   setInterval(() => {
     if (state.isPlaying) {
       state.noteCount += Math.floor(Math.random() * 3) + 1;
