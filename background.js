@@ -1,5 +1,6 @@
 let offscreenDocument = null;
 let isPlaying = false;
+let isStarting = false;
 
 async function createOffscreenDocument() {
   if (offscreenDocument) {
@@ -25,10 +26,39 @@ async function createOffscreenDocument() {
   }
 }
 
+async function closeOffscreenDocument() {
+  if (!offscreenDocument) return;
+  try {
+    await chrome.offscreen.closeDocument();
+    offscreenDocument = null;
+    console.log('Offscreen document closed');
+  } catch (error) {
+    console.error('Failed to close offscreen document:', error);
+  }
+}
+
+// Track if we're already starting to prevent duplicate starts
+let startInProgress = false;
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === 'startAudio') {
+    // Prevent duplicate starts
+    if (startInProgress) {
+      sendResponse({ success: false, error: 'Already starting' });
+      return true;
+    }
+    
+    startInProgress = true;
+    
     createOffscreenDocument().then(async () => {
       try {
+        // First, stop any existing audio
+        try {
+          await chrome.runtime.sendMessage({ action: 'stopTechno' });
+          await new Promise(resolve => setTimeout(resolve, 100));
+        } catch (e) {}
+        
+        // Then start new audio
         await chrome.runtime.sendMessage({
           action: 'startTechno',
           preset: message.preset || 'club',
@@ -36,8 +66,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           bpm: message.bpm || 128
         });
         isPlaying = true;
+        startInProgress = false;
         sendResponse({ success: true });
       } catch (e) {
+        startInProgress = false;
         sendResponse({ success: false });
       }
     });
@@ -47,6 +79,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === 'stopAudio') {
     chrome.runtime.sendMessage({ action: 'stopTechno' });
     isPlaying = false;
+    // Don't close immediately, let it finish
+    setTimeout(() => {
+      if (!isPlaying) {
+        closeOffscreenDocument();
+      }
+    }, 2000);
     sendResponse({ success: true });
     return true;
   }
