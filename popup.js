@@ -1,20 +1,18 @@
-// Popup controller for The Techno
 const state = {
   isPlaying: true,
   volume: 0.7,
   bpm: 128,
-  subgenre: 'deep',
   preset: 'club',
   noteCount: 0,
   startTime: Date.now()
 };
 
 const PRESETS = {
-  club: { bpm: 128, subgenre: 'deep', description: 'Club' },
-  warehouse: { bpm: 135, subgenre: 'industrial', description: 'Warehouse' },
-  chillout: { bpm: 115, subgenre: 'deep', description: 'Chillout' },
-  progressive: { bpm: 125, subgenre: 'melodic', description: 'Progressive' },
-  techno: { bpm: 140, subgenre: 'industrial', description: 'Hard Techno' }
+  club: { bpm: 128, description: 'Club' },
+  warehouse: { bpm: 135, description: 'Warehouse' },
+  chillout: { bpm: 115, description: 'Chillout' },
+  progressive: { bpm: 125, description: 'Progressive' },
+  techno: { bpm: 140, description: 'Hard' }
 };
 
 const elements = {
@@ -23,23 +21,20 @@ const elements = {
   volumeSlider: document.getElementById('volumeSlider'),
   volumeValue: document.getElementById('volumeValue'),
   presetBtns: document.querySelectorAll('.preset-btn'),
-  subgenreBtns: document.querySelectorAll('.subgenre-btn'),
   statusBadge: document.getElementById('statusBadge'),
   timeDisplay: document.getElementById('timeDisplay'),
-  noteDisplay: document.getElementById('noteDisplay'),
   noteCount: document.getElementById('noteCount'),
   presetDisplay: document.getElementById('presetDisplay'),
-  bpmDisplay: document.getElementById('bpmDisplay'),
-  visualizer: document.getElementById('visualizer')
+  bpmDisplay: document.getElementById('bpmDisplay')
 };
 
-// Create stars background
+// Create stars
 function createStars() {
   const bg = document.getElementById('galaxy-bg');
-  for (let i = 0; i < 150; i++) {
+  for (let i = 0; i < 100; i++) {
     const star = document.createElement('div');
     star.className = 'star';
-    const size = Math.random() * 2.5 + 0.5;
+    const size = Math.random() * 2 + 0.5;
     star.style.width = size + 'px';
     star.style.height = size + 'px';
     star.style.left = Math.random() * 100 + '%';
@@ -52,43 +47,30 @@ function createStars() {
 }
 createStars();
 
-// Visualizer animation
-function animateVisualizer() {
-  const bars = elements.visualizer.querySelectorAll('.vis-bar');
-  bars.forEach((bar) => {
-    const height = 4 + Math.random() * 30;
-    bar.style.height = height + 'px';
-  });
-}
-setInterval(animateVisualizer, 150);
-
-// Start audio in background
-async function startBackgroundAudio() {
+// Start audio
+async function startAudio() {
   try {
     await chrome.runtime.sendMessage({
       action: 'startAudio',
       preset: state.preset,
       volume: state.volume,
-      bpm: state.bpm,
-      subgenre: state.subgenre
+      bpm: state.bpm
     });
-    console.log('Background audio started');
+    console.log('Audio started');
   } catch (error) {
-    console.error('Failed to start background audio:', error);
+    console.error('Failed to start audio:', error);
   }
 }
 
-// Stop background audio
-async function stopBackgroundAudio() {
+async function stopAudio() {
   try {
     await chrome.runtime.sendMessage({ action: 'stopAudio' });
-    console.log('Background audio stopped');
+    console.log('Audio stopped');
   } catch (error) {
-    console.error('Failed to stop background audio:', error);
+    console.error('Failed to stop audio:', error);
   }
 }
 
-// Update functions
 async function updateVolume(volume) {
   try {
     await chrome.runtime.sendMessage({ action: 'updateVolume', volume });
@@ -105,14 +87,6 @@ async function updateBPM(bpm) {
   }
 }
 
-async function updateSubgenre(subgenre) {
-  try {
-    await chrome.runtime.sendMessage({ action: 'updateSubgenre', subgenre });
-  } catch (error) {
-    console.error('Failed to update subgenre:', error);
-  }
-}
-
 async function updatePreset(preset) {
   try {
     await chrome.runtime.sendMessage({ action: 'updatePreset', preset });
@@ -121,7 +95,7 @@ async function updatePreset(preset) {
   }
 }
 
-// UI Event Handlers
+// UI Setup
 function setupUI() {
   elements.playBtn.addEventListener('click', togglePlay);
 
@@ -140,26 +114,10 @@ function setupUI() {
       state.preset = preset;
       const config = PRESETS[preset];
       elements.presetDisplay.textContent = config.description;
-      
       state.bpm = config.bpm;
       elements.bpmDisplay.textContent = state.bpm;
       updateBPM(state.bpm);
-      
-      state.subgenre = config.subgenre;
-      elements.subgenreBtns.forEach(b => {
-        b.classList.toggle('active', b.dataset.subgenre === config.subgenre);
-      });
-      updateSubgenre(state.subgenre);
       updatePreset(preset);
-    });
-  });
-
-  elements.subgenreBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-      elements.subgenreBtns.forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      state.subgenre = btn.dataset.subgenre;
-      updateSubgenre(state.subgenre);
     });
   });
 }
@@ -172,8 +130,7 @@ function togglePlay() {
     elements.playBtn.querySelector('.icon').textContent = '▶';
     elements.statusBadge.textContent = '⏸ PAUSED';
     elements.statusBadge.style.color = '#ffaa88';
-    elements.statusBadge.style.borderColor = 'rgba(255,170,136,0.2)';
-    stopBackgroundAudio();
+    stopAudio();
   } else {
     state.isPlaying = true;
     elements.playBtn.classList.add('active');
@@ -181,12 +138,10 @@ function togglePlay() {
     elements.playBtn.querySelector('.icon').textContent = '⏸';
     elements.statusBadge.textContent = '● LIVE';
     elements.statusBadge.style.color = '#00d4ff';
-    elements.statusBadge.style.borderColor = 'rgba(0,200,255,0.15)';
-    startBackgroundAudio();
+    startAudio();
   }
 }
 
-// Update time display
 function updateTimeDisplay() {
   if (!state.isPlaying) return;
   const elapsed = (Date.now() - state.startTime) / 1000;
@@ -196,7 +151,7 @@ function updateTimeDisplay() {
     `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
-// Listen for status updates from offscreen
+// Listen for status updates
 chrome.runtime.onMessage.addListener((message) => {
   if (message.action === 'statusUpdate') {
     if (message.time) elements.timeDisplay.textContent = message.time;
@@ -207,15 +162,16 @@ chrome.runtime.onMessage.addListener((message) => {
   }
 });
 
-// Initialize
 async function init() {
   setupUI();
-  await startBackgroundAudio();
+  await startAudio();
   setInterval(updateTimeDisplay, 1000);
+  setInterval(() => {
+    if (state.isPlaying) {
+      state.noteCount += Math.floor(Math.random() * 5) + 2;
+      elements.noteCount.textContent = `${state.noteCount} notes`;
+    }
+  }, 2000);
 }
-
-window.addEventListener('beforeunload', () => {
-  console.log('Popup closed, audio continues in background');
-});
 
 init();
