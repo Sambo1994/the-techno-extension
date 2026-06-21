@@ -47,7 +47,7 @@ function createStars() {
 }
 createStars();
 
-// Start audio
+// Audio functions
 async function startAudio() {
   try {
     await chrome.runtime.sendMessage({
@@ -168,7 +168,7 @@ async function init() {
   setInterval(updateTimeDisplay, 1000);
   setInterval(() => {
     if (state.isPlaying) {
-      state.noteCount += Math.floor(Math.random() * 5) + 2;
+      state.noteCount += Math.floor(Math.random() * 3) + 1;
       elements.noteCount.textContent = `${state.noteCount} notes`;
     }
   }, 2000);
