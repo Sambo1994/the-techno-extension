@@ -1,397 +1,267 @@
-// Complete Techno Engine - Fixed Continuous Playback
+// Simplified Techno Engine - Guaranteed to produce sound
 console.log('Offscreen script loaded');
 
 let audioContext = null;
-let isPlaying = false;
-let masterGain = null;
-let isInitialized = false;
+let isRunning = false;
+let gainNode = null;
+let timerId = null;
 let currentBPM = 128;
-let musicGenerator = null;  // DECLARED ONCE
-let initAttempts = 0;
-let scheduledTime = 0;
 let beatCount = 0;
-let isScheduling = false;
-
-// Preset configurations
-const PRESETS = {
-  club: { bpm: 128, subgenre: 'deep', density: 0.8, complexity: 4, description: 'Club' },
-  warehouse: { bpm: 135, subgenre: 'industrial', density: 0.9, complexity: 5, description: 'Warehouse' },
-  chillout: { bpm: 115, subgenre: 'deep', density: 0.5, complexity: 3, description: 'Chillout' },
-  progressive: { bpm: 125, subgenre: 'melodic', density: 0.7, complexity: 4, description: 'Progressive' },
-  techno: { bpm: 140, subgenre: 'industrial', density: 0.9, complexity: 5, description: 'Hard Techno' }
+let state = {
+  volume: 0.5,
+  bpm: 128,
+  preset: 'club'
 };
 
-const NOTE_FREQUENCIES = {
+// Simple note frequencies
+const NOTES = {
   'C2': 65.41, 'D2': 73.42, 'E2': 82.41, 'F2': 87.31, 'G2': 98.00, 'A2': 110.00, 'B2': 123.47,
   'C3': 130.81, 'D3': 146.83, 'E3': 164.81, 'F3': 174.61, 'G3': 196.00, 'A3': 220.00, 'B3': 246.94,
-  'C4': 261.63, 'D4': 293.66, 'E4': 329.63, 'F4': 349.23, 'G4': 392.00, 'A4': 440.00, 'B4': 493.88,
-  'C5': 523.25, 'D5': 587.33, 'E5': 659.25, 'F5': 698.46, 'G5': 783.99, 'A5': 880.00, 'B5': 987.77
+  'C4': 261.63, 'D4': 293.66, 'E4': 329.63, 'F4': 349.23, 'G4': 392.00, 'A4': 440.00, 'B4': 493.88
 };
 
-let state = {
-  preset: 'club',
-  volume: 0.7,
-  bpm: 128,
-  subgenre: 'deep',
-  noteCount: 0,
-  startTime: Date.now()
-};
-
-// Techno Engine
-class TechnoEngine {
-  constructor() {
-    this.audioContext = null;
-    this.masterGain = null;
-    this.isInitialized = false;
-  }
-
-  async init() {
-    if (this.isInitialized && this.audioContext && this.audioContext.state === 'running') {
-      return true;
+// Initialize audio
+async function initAudio() {
+  try {
+    console.log('Creating audio context...');
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    
+    console.log('Audio context state:', audioContext.state);
+    
+    if (audioContext.state === 'suspended') {
+      await audioContext.resume();
+      console.log('Audio context resumed');
     }
     
-    try {
-      console.log('Initializing audio context...');
-      this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-      
-      if (this.audioContext.state === 'suspended') {
-        await this.audioContext.resume();
-      }
-      
-      console.log('Audio context state:', this.audioContext.state);
-      
-      this.masterGain = this.audioContext.createGain();
-      this.masterGain.gain.value = state.volume * 0.3;
-      this.masterGain.connect(this.audioContext.destination);
-      
-      this.isInitialized = true;
-      console.log('Techno engine initialized successfully');
-      return true;
-    } catch (error) {
-      console.error('Failed to initialize audio:', error);
-      if (initAttempts < 5) {
-        initAttempts++;
-        setTimeout(() => this.init(), 1000);
-      }
-      return false;
-    }
-  }
-
-  createKick(time, velocity = 0.8) {
-    if (!this.isInitialized || !this.audioContext || !this.masterGain) return;
+    gainNode = audioContext.createGain();
+    gainNode.gain.value = state.volume * 0.3;
+    gainNode.connect(audioContext.destination);
     
-    try {
-      const osc = this.audioContext.createOscillator();
-      const gain = this.audioContext.createGain();
-      
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(120, time);
-      osc.frequency.exponentialRampToValueAtTime(30, time + 0.12);
-      
-      gain.gain.setValueAtTime(velocity * 0.5 * state.volume * 0.3, time);
-      gain.gain.exponentialRampToValueAtTime(0.001, time + 0.15);
-      
-      osc.connect(gain);
-      gain.connect(this.masterGain);
-      
-      osc.start(time);
-      osc.stop(time + 0.2);
-    } catch (e) {
-      // Silent catch for performance
-    }
-  }
-
-  createHiHat(time, velocity = 0.6) {
-    if (!this.isInitialized || !this.audioContext || !this.masterGain) return;
-    
-    try {
-      const bufferSize = this.audioContext.sampleRate * 0.05;
-      const buffer = this.audioContext.createBuffer(1, bufferSize, this.audioContext.sampleRate);
-      const data = buffer.getChannelData(0);
-      for (let i = 0; i < bufferSize; i++) {
-        data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.05));
-      }
-      
-      const noise = this.audioContext.createBufferSource();
-      noise.buffer = buffer;
-      
-      const gain = this.audioContext.createGain();
-      const filter = this.audioContext.createBiquadFilter();
-      
-      filter.type = 'bandpass';
-      filter.frequency.value = 7000;
-      filter.Q.value = 1.5;
-      
-      gain.gain.setValueAtTime(velocity * 0.15 * state.volume * 0.3, time);
-      gain.gain.exponentialRampToValueAtTime(0.001, time + 0.04);
-      
-      noise.connect(filter);
-      filter.connect(gain);
-      gain.connect(this.masterGain);
-      
-      noise.start(time);
-      noise.stop(time + 0.05);
-    } catch (e) {
-      // Silent catch for performance
-    }
-  }
-
-  createClap(time, velocity = 0.7) {
-    if (!this.isInitialized || !this.audioContext || !this.masterGain) return;
-    
-    try {
-      const bufferSize = this.audioContext.sampleRate * 0.05;
-      const buffer = this.audioContext.createBuffer(1, bufferSize, this.audioContext.sampleRate);
-      const data = buffer.getChannelData(0);
-      for (let i = 0; i < bufferSize; i++) {
-        data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.2));
-      }
-      
-      const noise = this.audioContext.createBufferSource();
-      noise.buffer = buffer;
-      
-      const gain = this.audioContext.createGain();
-      const filter = this.audioContext.createBiquadFilter();
-      
-      filter.type = 'bandpass';
-      filter.frequency.value = 2000;
-      filter.Q.value = 1;
-      
-      gain.gain.setValueAtTime(velocity * 0.2 * state.volume * 0.3, time);
-      gain.gain.exponentialRampToValueAtTime(0.001, time + 0.05);
-      
-      noise.connect(filter);
-      filter.connect(gain);
-      gain.connect(this.masterGain);
-      
-      noise.start(time);
-      noise.stop(time + 0.06);
-    } catch (e) {
-      // Silent catch for performance
-    }
-  }
-
-  createBass(note, time, velocity = 0.7) {
-    if (!this.isInitialized || !this.audioContext || !this.masterGain) return;
-    
-    try {
-      const freq = NOTE_FREQUENCIES[note] || 55;
-      
-      const osc = this.audioContext.createOscillator();
-      const gain = this.audioContext.createGain();
-      const filter = this.audioContext.createBiquadFilter();
-      
-      osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(freq, time);
-      
-      filter.type = 'lowpass';
-      filter.frequency.value = 300;
-      filter.Q.value = 2;
-      
-      gain.gain.setValueAtTime(velocity * 0.25 * state.volume * 0.3, time);
-      gain.gain.exponentialRampToValueAtTime(0.001, time + 0.3);
-      
-      osc.connect(filter);
-      filter.connect(gain);
-      gain.connect(this.masterGain);
-      
-      osc.start(time);
-      osc.stop(time + 0.4);
-    } catch (e) {
-      // Silent catch for performance
-    }
-  }
-
-  createSynth(note, time, velocity = 0.6) {
-    if (!this.isInitialized || !this.audioContext || !this.masterGain) return;
-    
-    try {
-      const freq = NOTE_FREQUENCIES[note];
-      if (!freq) return;
-      
-      const osc = this.audioContext.createOscillator();
-      const gain = this.audioContext.createGain();
-      
-      osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(freq, time);
-      
-      gain.gain.setValueAtTime(velocity * 0.12 * state.volume * 0.3, time);
-      gain.gain.exponentialRampToValueAtTime(0.001, time + 1);
-      
-      osc.connect(gain);
-      gain.connect(this.masterGain);
-      
-      osc.start(time);
-      osc.stop(time + 1.2);
-    } catch (e) {
-      // Silent catch for performance
-    }
-  }
-
-  setVolume(value) {
-    state.volume = value;
-    if (this.masterGain) {
-      this.masterGain.gain.value = value * 0.3;
-    }
-  }
-
-  setBPM(bpm) {
-    currentBPM = bpm;
-    state.bpm = bpm;
-  }
-
-  setSubgenre(subgenre) {
-    state.subgenre = subgenre;
-  }
-
-  dispose() {
-    if (this.audioContext) {
-      this.audioContext.close();
-    }
-    this.isInitialized = false;
+    console.log('Audio initialized successfully!');
+    console.log('Audio context state:', audioContext.state);
+    return true;
+  } catch (error) {
+    console.error('Failed to initialize audio:', error);
+    return false;
   }
 }
 
-// Music Generator - FIXED CONTINUOUS PLAYBACK
-class TechnoGenerator {
-  constructor(engine) {
-    this.engine = engine;
-    this.isRunning = false;
-    this.beatCount = 0;
-    this.nextBeatTime = 0;
-    this.animationId = null;
-    this.barCount = 0;
-  }
-
-  start() {
-    if (this.isRunning) return;
-    this.isRunning = true;
-    state.startTime = Date.now();
-    state.noteCount = 0;
-    this.beatCount = 0;
-    this.barCount = 0;
+// Play a kick drum
+function playKick(time) {
+  if (!audioContext || !gainNode) return;
+  
+  try {
+    const osc = audioContext.createOscillator();
+    const gain = audioContext.createGain();
     
-    // Start scheduling
-    this.nextBeatTime = this.engine.audioContext.currentTime;
-    console.log('Generator started');
-    this.scheduleNextBeat();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(150, time);
+    osc.frequency.exponentialRampToValueAtTime(40, time + 0.1);
+    
+    gain.gain.setValueAtTime(0.4 * state.volume, time);
+    gain.gain.exponentialRampToValueAtTime(0.001, time + 0.12);
+    
+    osc.connect(gain);
+    gain.connect(gainNode);
+    
+    osc.start(time);
+    osc.stop(time + 0.15);
+    
+    console.log('Kick played at', time);
+  } catch (e) {
+    console.error('Kick error:', e);
   }
+}
 
-  stop() {
-    this.isRunning = false;
-    if (this.animationId) {
-      cancelAnimationFrame(this.animationId);
-      this.animationId = null;
+// Play a hi-hat
+function playHiHat(time) {
+  if (!audioContext || !gainNode) return;
+  
+  try {
+    const bufferSize = audioContext.sampleRate * 0.03;
+    const buffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.05));
     }
-    console.log('Generator stopped');
+    
+    const noise = audioContext.createBufferSource();
+    noise.buffer = buffer;
+    
+    const gain = audioContext.createGain();
+    const filter = audioContext.createBiquadFilter();
+    
+    filter.type = 'highpass';
+    filter.frequency.value = 5000;
+    
+    gain.gain.setValueAtTime(0.1 * state.volume, time);
+    gain.gain.exponentialRampToValueAtTime(0.001, time + 0.03);
+    
+    noise.connect(filter);
+    filter.connect(gain);
+    gain.connect(gainNode);
+    
+    noise.start(time);
+    noise.stop(time + 0.04);
+  } catch (e) {
+    console.error('Hi-hat error:', e);
   }
+}
 
-  scheduleNextBeat() {
-    if (!this.isRunning || !this.engine.isInitialized) {
-      if (!this.engine.isInitialized) {
-        setTimeout(() => this.scheduleNextBeat(), 100);
-      }
+// Play a clap
+function playClap(time) {
+  if (!audioContext || !gainNode) return;
+  
+  try {
+    const bufferSize = audioContext.sampleRate * 0.04;
+    const buffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.15));
+    }
+    
+    const noise = audioContext.createBufferSource();
+    noise.buffer = buffer;
+    
+    const gain = audioContext.createGain();
+    const filter = audioContext.createBiquadFilter();
+    
+    filter.type = 'bandpass';
+    filter.frequency.value = 1500;
+    filter.Q.value = 1;
+    
+    gain.gain.setValueAtTime(0.15 * state.volume, time);
+    gain.gain.exponentialRampToValueAtTime(0.001, time + 0.04);
+    
+    noise.connect(filter);
+    filter.connect(gain);
+    gain.connect(gainNode);
+    
+    noise.start(time);
+    noise.stop(time + 0.05);
+  } catch (e) {
+    console.error('Clap error:', e);
+  }
+}
+
+// Play a bass note
+function playBass(time) {
+  if (!audioContext || !gainNode) return;
+  
+  try {
+    const freq = 55 + Math.random() * 20; // Random bass frequency
+    const osc = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+    
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(freq, time);
+    
+    gain.gain.setValueAtTime(0.15 * state.volume, time);
+    gain.gain.exponentialRampToValueAtTime(0.001, time + 0.25);
+    
+    osc.connect(gain);
+    gain.connect(gainNode);
+    
+    osc.start(time);
+    osc.stop(time + 0.3);
+  } catch (e) {
+    console.error('Bass error:', e);
+  }
+}
+
+// Generate a beat
+function generateBeat() {
+  if (!audioContext || audioContext.state !== 'running') {
+    console.log('Audio not ready, retrying...');
+    if (audioContext && audioContext.state === 'suspended') {
+      audioContext.resume();
+    }
+    return;
+  }
+  
+  const now = audioContext.currentTime;
+  const bpm = state.bpm || 128;
+  const beatDuration = 60 / bpm;
+  const beat = beatCount % 16;
+  
+  // Kick on every beat
+  playKick(now);
+  
+  // Hi-hat on offbeats
+  if (beat % 2 === 1) {
+    playHiHat(now);
+  }
+  
+  // Clap on 2 and 4 (beats 1 and 3 in 0-index)
+  if (beat === 1 || beat === 3) {
+    playClap(now);
+  }
+  
+  // Bass on every other beat
+  if (beat % 2 === 0) {
+    playBass(now);
+  }
+  
+  beatCount++;
+  
+  // Schedule next beat
+  const nextTime = beatDuration * 1000;
+  timerId = setTimeout(generateBeat, nextTime - 10);
+}
+
+// Start the music
+async function startMusic() {
+  console.log('Starting music...');
+  
+  if (!audioContext) {
+    const success = await initAudio();
+    if (!success) {
+      console.error('Failed to initialize audio');
       return;
     }
-    
-    const bpm = state.bpm || 128;
-    const beatDuration = 60 / bpm;
-    const lookahead = 0.1;
-    
-    // Schedule beats in advance
-    while (this.nextBeatTime < this.engine.audioContext.currentTime + lookahead) {
-      this.generateBeat(this.nextBeatTime);
-      this.nextBeatTime += beatDuration;
-    }
-    
-    // Schedule next check
-    this.animationId = requestAnimationFrame(() => {
-      this.scheduleNextBeat();
-    });
   }
-
-  generateBeat(time) {
-    const beat = this.beatCount % 16;
-    const bpm = state.bpm || 128;
-    const beatDuration = 60 / bpm;
-    
-    // KICK - on every beat (4x4)
-    this.engine.createKick(time, 0.7 + Math.random() * 0.2);
-    
-    // HI-HAT - offbeat and variations
-    if (beat % 2 === 1) {
-      this.engine.createHiHat(time, 0.3 + Math.random() * 0.2);
-    }
-    if (beat % 4 === 0 && Math.random() < 0.5) {
-      this.engine.createHiHat(time + beatDuration * 0.25, 0.2 + Math.random() * 0.2);
-    }
-    if (beat % 4 === 2 && Math.random() < 0.5) {
-      this.engine.createHiHat(time + beatDuration * 0.75, 0.2 + Math.random() * 0.2);
-    }
-    
-    // CLAP - on 2 and 4
-    if (beat === 1 || beat === 3) {
-      this.engine.createClap(time, 0.5 + Math.random() * 0.2);
-    }
-    if (beat === 7 || beat === 11) {
-      this.engine.createClap(time, 0.3 + Math.random() * 0.2);
-    }
-    
-    // BASS
-    const bassNotes = ['C2', 'G2', 'E2', 'A2'];
-    if (beat % 2 === 0) {
-      const note = bassNotes[Math.floor(Math.random() * bassNotes.length)];
-      this.engine.createBass(note, time, 0.5 + Math.random() * 0.3);
-    }
-    if (beat % 4 === 1 && Math.random() < 0.3) {
-      const note = bassNotes[Math.floor(Math.random() * bassNotes.length)];
-      this.engine.createBass(note, time + beatDuration * 0.5, 0.3 + Math.random() * 0.2);
-    }
-    
-    // SYNTH
-    if (this.barCount % 2 === 0) {
-      if (beat === 2 || beat === 6 || beat === 10 || beat === 14) {
-        const synthNotes = ['C4', 'E4', 'G4', 'A4', 'B4'];
-        const note = synthNotes[Math.floor(Math.random() * synthNotes.length)];
-        this.engine.createSynth(note, time, 0.2 + Math.random() * 0.2);
-      }
-    }
-    
-    // Extra percussion
-    if (Math.random() < 0.1 && beat % 4 === 0) {
-      this.engine.createClap(time + beatDuration * 0.5, 0.2 + Math.random() * 0.1);
-    }
-    
-    // Update counters
-    this.beatCount++;
-    if (this.beatCount % 4 === 0) {
-      this.barCount++;
-    }
-    
-    state.noteCount += 3 + Math.floor(Math.random() * 2);
-    
-    if (this.beatCount % 4 === 0) {
-      this.updateStatus();
-    }
+  
+  if (audioContext.state === 'suspended') {
+    await audioContext.resume();
+    console.log('Audio context resumed');
   }
+  
+  if (audioContext.state !== 'running') {
+    console.error('Audio context not running:', audioContext.state);
+    return;
+  }
+  
+  console.log('Audio is ready, starting beats...');
+  beatCount = 0;
+  isRunning = true;
+  
+  // Start generating beats
+  generateBeat();
+}
 
-  updateStatus() {
-    const elapsed = (Date.now() - state.startTime) / 1000;
-    const minutes = Math.floor(elapsed / 60);
-    const seconds = Math.floor(elapsed % 60);
-    
-    try {
-      chrome.runtime.sendMessage({
-        action: 'statusUpdate',
-        time: `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`,
-        notes: state.noteCount
-      }).catch(() => {});
-    } catch (e) {}
+// Stop the music
+function stopMusic() {
+  console.log('Stopping music...');
+  isRunning = false;
+  if (timerId) {
+    clearTimeout(timerId);
+    timerId = null;
   }
 }
 
-// Initialize - ONLY DECLARE ONCE
-let technoEngine = new TechnoEngine();
+// Update volume
+function updateVolume(volume) {
+  state.volume = volume;
+  if (gainNode) {
+    gainNode.gain.value = volume * 0.3;
+  }
+}
+
+// Update BPM
+function updateBPM(bpm) {
+  state.bpm = bpm;
+  console.log('BPM updated to:', bpm);
+}
 
 // Message handler
 chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
@@ -403,99 +273,48 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
   }
   
   if (message.action === 'startTechno') {
-    console.log('Starting techno...');
+    console.log('Start techno requested');
     
-    if (!technoEngine.isInitialized) {
-      const success = await technoEngine.init();
-      if (!success) {
-        sendResponse({ success: false, error: 'Failed to initialize audio' });
-        return true;
-      }
+    if (message.volume !== undefined) {
+      state.volume = message.volume;
     }
-    
+    if (message.bpm) {
+      state.bpm = message.bpm;
+    }
     if (message.preset) {
       state.preset = message.preset;
-      const preset = PRESETS[message.preset];
-      if (preset) {
-        if (preset.bpm) state.bpm = preset.bpm;
-        if (preset.subgenre) state.subgenre = preset.subgenre;
-      }
-    }
-    if (message.bpm) state.bpm = message.bpm;
-    if (message.subgenre) state.subgenre = message.subgenre;
-    if (message.volume !== undefined) technoEngine.setVolume(message.volume);
-    
-    technoEngine.setBPM(state.bpm);
-    technoEngine.setSubgenre(state.subgenre);
-    
-    // Create generator if it doesn't exist
-    if (!musicGenerator) {
-      musicGenerator = new TechnoGenerator(technoEngine);
     }
     
-    if (technoEngine.audioContext && technoEngine.audioContext.state === 'suspended') {
-      await technoEngine.audioContext.resume();
-    }
-    
-    musicGenerator.start();
-    isPlaying = true;
-    console.log('Techno started successfully');
+    await startMusic();
     sendResponse({ success: true });
     return true;
   }
   
   if (message.action === 'stopTechno') {
-    console.log('Stopping techno...');
-    if (musicGenerator) {
-      musicGenerator.stop();
-    }
-    isPlaying = false;
+    console.log('Stop techno requested');
+    stopMusic();
     sendResponse({ success: true });
     return true;
   }
   
   if (message.action === 'updateVolume') {
-    if (technoEngine) {
-      technoEngine.setVolume(message.volume);
-    }
+    updateVolume(message.volume);
     sendResponse({ success: true });
     return true;
   }
   
   if (message.action === 'updateBPM') {
-    state.bpm = message.bpm;
-    if (technoEngine) {
-      technoEngine.setBPM(message.bpm);
-    }
-    sendResponse({ success: true });
-    return true;
-  }
-  
-  if (message.action === 'updateSubgenre') {
-    state.subgenre = message.subgenre;
-    if (technoEngine) {
-      technoEngine.setSubgenre(message.subgenre);
-    }
+    updateBPM(message.bpm);
     sendResponse({ success: true });
     return true;
   }
   
   if (message.action === 'updatePreset') {
     state.preset = message.preset;
-    const preset = PRESETS[message.preset];
-    if (preset) {
-      if (preset.bpm) {
-        state.bpm = preset.bpm;
-        if (technoEngine) technoEngine.setBPM(preset.bpm);
-      }
-      if (preset.subgenre) {
-        state.subgenre = preset.subgenre;
-        if (technoEngine) technoEngine.setSubgenre(preset.subgenre);
-      }
-    }
     sendResponse({ success: true });
     return true;
   }
 });
 
-console.log('Offscreen techno engine ready');
+console.log('Offscreen script ready');
+console.log('Audio will start when message received');
